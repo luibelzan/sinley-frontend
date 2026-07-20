@@ -80,6 +80,8 @@ export interface TableStateMessage {
   tableId: string;
   capacity: number;
   buyInCents: number;
+  isPrivate: boolean;
+  code: string | null;
   seatOrder: string[];
   connectedUserIds: string[];
   stacks: Record<string, number>;

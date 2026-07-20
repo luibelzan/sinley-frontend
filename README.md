@@ -10,12 +10,18 @@ diseño (colores, tipografía) viven en `src/index.css` como variables CSS.
 ## Paso 7: la mesa de juego
 
 - **`TablePage`** (`src/pages/TablePage.tsx`) — se conecta por Socket.io usando
-  el access token de la sesión. Para jugar, eliges **número de jugadores**
-  (2/3/4) e **importe de la mesa** (1 a 250€, en los tramos fijos que soporta
-  el backend) y pulsas "Buscar mesa": el servidor te sienta en una mesa
-  abierta con esa configuración exacta, o crea una nueva. Todos los
-  jugadores de una misma mesa se sientan con el mismo importe — es lo que
-  hace que la partida sea justa. Renderiza en tiempo real: asientos con
+  el access token de la sesión. Para jugar, primero eliges **partida pública
+  o privada**:
+  - **Pública**: eliges número de jugadores (2/3/4) e importe de la mesa (1 a
+    250€) y pulsas "Buscar mesa": el servidor te sienta en una mesa abierta
+    con esa configuración exacta, o crea una nueva.
+  - **Privada**: para jugar con amigos. "Crear sala" genera un código de 6
+    caracteres que compartes con ellos (aparece en la barra superior de la
+    mesa, con un botón para copiarlo); "Unirse con código" te sienta
+    directamente en la sala de un amigo con el importe que él haya fijado.
+
+  Todos los jugadores de una misma mesa se sientan con el mismo importe —
+  es lo que hace que la partida sea justa. Renderiza en tiempo real: asientos con
   nombre de usuario, stack de fichas actual y estado (retirado/conectado),
   el bote, de quién es el turno, tus propias cartas, los controles de
   apuesta cuando te toca (incluido un botón de **All-in**), el panel de

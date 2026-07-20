@@ -356,6 +356,55 @@ a {
   margin-top: 0;
 }
 
+.mode-toggle {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.mode-toggle--sub {
+  margin-bottom: 1.25rem;
+}
+
+.mode-toggle-btn {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-surface-border);
+  background: var(--color-felt-dark);
+  color: var(--color-cream-muted);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-toggle-btn:hover {
+  border-color: var(--color-gold);
+}
+
+.mode-toggle-btn--active {
+  background: var(--color-ember);
+  border-color: var(--color-ember);
+  color: var(--color-cream);
+  font-weight: 500;
+}
+
+.room-code-badge {
+  background: var(--color-felt-dark);
+  border: 1px dashed var(--color-gold);
+  color: var(--color-gold-soft);
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+
+.room-code-badge:hover {
+  background: var(--color-wood-black);
+}
+
 .seats-row {
   display: flex;
   flex-wrap: wrap;

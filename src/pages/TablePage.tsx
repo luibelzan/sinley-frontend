@@ -33,6 +33,9 @@ export function TablePage({ onExit }: { onExit: () => void }) {
 
   const [selectedCapacity, setSelectedCapacity] = useState<number>(2);
   const [selectedBuyIn, setSelectedBuyIn] = useState<number>(10);
+  const [roomMode, setRoomMode] = useState<"public" | "private">("public");
+  const [privateAction, setPrivateAction] = useState<"create" | "join">("create");
+  const [joinCode, setJoinCode] = useState("");
   const [tableState, setTableState] = useState<TableStateMessage | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [betAmount, setBetAmount] = useState("1.00");
@@ -73,7 +76,15 @@ export function TablePage({ onExit }: { onExit: () => void }) {
 
   function joinTable(e: FormEvent) {
     e.preventDefault();
-    socketRef.current?.emit("table:join", { capacity: selectedCapacity, buyInEuros: selectedBuyIn });
+    if (roomMode === "public") {
+      socketRef.current?.emit("table:join", { capacity: selectedCapacity, buyInEuros: selectedBuyIn });
+      return;
+    }
+    if (privateAction === "create") {
+      socketRef.current?.emit("table:createPrivate", { capacity: selectedCapacity, buyInEuros: selectedBuyIn });
+      return;
+    }
+    socketRef.current?.emit("table:joinPrivate", { code: joinCode.trim() });
   }
 
   function leaveTable() {
@@ -117,37 +128,99 @@ export function TablePage({ onExit }: { onExit: () => void }) {
           </button>
         </div>
         <form className="join-form" onSubmit={joinTable}>
-          <p>
-            Elige el tamaño de mesa y el importe de ficha. Todos los jugadores de una misma mesa se sientan con el
-            mismo importe — así la partida es justa para todos.
-          </p>
-          {errorMessage && <div className="form-error">{errorMessage}</div>}
-          <div className="field">
-            <label htmlFor="capacity">Número de jugadores</label>
-            <select
-              id="capacity"
-              value={selectedCapacity}
-              onChange={(e) => setSelectedCapacity(Number(e.target.value))}
+          <div className="mode-toggle" role="group" aria-label="Tipo de partida">
+            <button
+              type="button"
+              className={`mode-toggle-btn${roomMode === "public" ? " mode-toggle-btn--active" : ""}`}
+              onClick={() => setRoomMode("public")}
             >
-              {ROOM_CAPACITIES.map((c) => (
-                <option key={c} value={c}>
-                  {c} jugadores
-                </option>
-              ))}
-            </select>
+              Partida pública
+            </button>
+            <button
+              type="button"
+              className={`mode-toggle-btn${roomMode === "private" ? " mode-toggle-btn--active" : ""}`}
+              onClick={() => setRoomMode("private")}
+            >
+              Partida privada
+            </button>
           </div>
-          <div className="field">
-            <label htmlFor="buyIn">Importe de la mesa</label>
-            <select id="buyIn" value={selectedBuyIn} onChange={(e) => setSelectedBuyIn(Number(e.target.value))}>
-              {BUY_IN_TIERS_EUROS.map((amount) => (
-                <option key={amount} value={amount}>
-                  {amount} €
-                </option>
-              ))}
-            </select>
-          </div>
+
+          {roomMode === "public" ? (
+            <p>
+              Elige el tamaño de mesa y el importe de ficha: te emparejamos con quien esté buscando lo mismo. Todos
+              los jugadores de una misma mesa se sientan con el mismo importe — así la partida es justa para todos.
+            </p>
+          ) : (
+            <p>
+              Crea una sala y comparte el código con tus amigos, o introduce el código que te hayan pasado para
+              unirte a la suya.
+            </p>
+          )}
+
+          {errorMessage && <div className="form-error">{errorMessage}</div>}
+
+          {roomMode === "private" && (
+            <div className="mode-toggle mode-toggle--sub" role="group" aria-label="Crear o unirse">
+              <button
+                type="button"
+                className={`mode-toggle-btn${privateAction === "create" ? " mode-toggle-btn--active" : ""}`}
+                onClick={() => setPrivateAction("create")}
+              >
+                Crear sala
+              </button>
+              <button
+                type="button"
+                className={`mode-toggle-btn${privateAction === "join" ? " mode-toggle-btn--active" : ""}`}
+                onClick={() => setPrivateAction("join")}
+              >
+                Unirse con código
+              </button>
+            </div>
+          )}
+
+          {roomMode === "private" && privateAction === "join" ? (
+            <div className="field">
+              <label htmlFor="joinCode">Código de la sala</label>
+              <input
+                id="joinCode"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="ABC123"
+                maxLength={6}
+                style={{ textTransform: "uppercase", letterSpacing: "0.15em" }}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="field">
+                <label htmlFor="capacity">Número de jugadores</label>
+                <select
+                  id="capacity"
+                  value={selectedCapacity}
+                  onChange={(e) => setSelectedCapacity(Number(e.target.value))}
+                >
+                  {ROOM_CAPACITIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c} jugadores
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="buyIn">Importe de la mesa</label>
+                <select id="buyIn" value={selectedBuyIn} onChange={(e) => setSelectedBuyIn(Number(e.target.value))}>
+                  {BUY_IN_TIERS_EUROS.map((amount) => (
+                    <option key={amount} value={amount}>
+                      {amount} €
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
           <button type="submit" className="btn-primary">
-            Buscar mesa
+            {roomMode === "public" ? "Buscar mesa" : privateAction === "create" ? "Crear sala privada" : "Unirse a la sala"}
           </button>
         </form>
       </div>
@@ -230,6 +303,16 @@ export function TablePage({ onExit }: { onExit: () => void }) {
           <img src="/images/icon.png" alt="" className="topbar-logo" />
           Mesa de {tableState.capacity} — ficha {centsToEuros(tableState.buyInCents)} €
         </h2>
+        {tableState.isPrivate && tableState.code && (
+          <button
+            type="button"
+            className="room-code-badge"
+            title="Copiar código para invitar a amigos"
+            onClick={() => navigator.clipboard?.writeText(tableState.code!)}
+          >
+            Código: <strong>{tableState.code}</strong> ⧉
+          </button>
+        )}
         <div className="table-topbar-actions">
           <button className="btn-logout" onClick={leaveTable}>
             Salir de la mesa
