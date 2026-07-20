@@ -68,6 +68,14 @@ export interface HandPublicState {
   players: PlayerPublicView[];
 }
 
+export interface StandingEntry {
+  userId: string;
+  finalStackCents: number;
+  totalBuyInCents: number;
+  netCents: number;
+  position: number;
+}
+
 export interface TableStateMessage {
   tableId: string;
   capacity: number;
@@ -78,6 +86,8 @@ export interface TableStateMessage {
   dealerId: string | null;
   hand: HandPublicState | null;
   seatUsernames: { id: string; username: string }[];
+  gameOver: boolean;
+  standings: StandingEntry[] | null;
 }
 
 /** Salas disponibles: deben coincidir exactamente con las del backend (tableManager.ts). */

@@ -21,6 +21,11 @@ diseño (colores, tipografía) viven en `src/index.css` como variables CSS.
   apuesta cuando te toca (incluido un botón de **All-in**), el panel de
   descarte, un botón de **recompra de fichas** si te quedas a 0, y el
   resultado final de la mano con el desglose de puntuación de cada jugador.
+  Tras cada mano hay una pausa de unos segundos (para ver el resultado y las
+  cartas del rival si hubo showdown) y la siguiente mano arranca sola, sin
+  pulsar nada — hasta que ya no quede más de un jugador con fichas, momento
+  en el que se muestra una pantalla de resultados finales con la posición y
+  la ganancia o pérdida neta de cada jugador (estilo torneo).
 - **`src/game/types.ts`** — tipos del motor reflejados en el cliente (fases,
   acciones, evaluación de manos, tramos de sala) para tipar los mensajes de
   socket.
@@ -58,9 +63,12 @@ el pie de la pantalla de login) y redistribuir estos PNG concretos bajo la
 misma licencia si compartes el proyecto.
 
 El "10" (Diez) que usábamos antes no existía en ninguna baraja española real
-(el mazo tradicional salta del 7 a la Sota) — como el Tres ya vale 10 puntos
-igual que él, se sustituyó por una segunda Tres real de cada palo. Todas las
-cartas de la baraja usan ahora arte real con licencia, sin excepciones.
+(el mazo tradicional salta del 7 a la Sota), así que se quitó: la baraja
+vuelve a ser la real de 28 cartas (7 rangos × 4 palos, todas con arte con
+licencia, sin excepciones ni duplicados). El problema que motivó añadir esa
+carta — que el mazo se quedaba corto si los 4 jugadores descartaban el
+máximo — se resuelve ahora en el propio motor: si hace falta, se barajan de
+nuevo las cartas ya descartadas en esa fase y se sigue repartiendo desde ahí.
 
 ## Cómo levantarlo
 

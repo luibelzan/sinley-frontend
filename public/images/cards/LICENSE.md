@@ -20,12 +20,9 @@ https://creativecommons.org/licenses/by-sa/3.0/
   forzó el mismo tamaño exacto en las 28 cartas para que ninguna quedara con
   un margen distinto a las demás), sin recompresión con pérdida.
 - Solo se usan 7 de los 12 rangos por palo (As, Tres, Cinco, Siete, Sota,
-  Caballero, Rey), ya que "Sin Ley" se juega con una baraja de 32 cartas
+  Caballero, Rey), ya que "Sin Ley" se juega con una baraja de 28 cartas
   (Sota/Caballo/Rey renombrados aquí Sota/Caballero/Rey se corresponden con
-  los archivos `_10`, `_11`, `_12` del repositorio original). Para completar
-  las 32 cartas se usa una segunda Tres por palo (repitiendo el mismo archivo
-  `_03`), en vez de inventar una carta "10" que no existe en ninguna baraja
-  española real.
+  los archivos `_10`, `_11`, `_12` del repositorio original).
 
 ## Atribución
 

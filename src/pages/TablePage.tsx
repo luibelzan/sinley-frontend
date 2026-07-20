@@ -154,10 +154,74 @@ export function TablePage({ onExit }: { onExit: () => void }) {
     );
   }
 
-  const hand: HandPublicState | null = tableState?.hand ?? null;
+  const hand: HandPublicState | null = tableState.hand;
   const myId = user?.id;
   const myPlayer = hand?.players.find((p) => p.id === myId);
   const isMyTurn = hand?.actingPlayerId === myId;
+
+  if (tableState.gameOver && tableState.standings) {
+    const myStanding = tableState.standings.find((s) => s.userId === myId);
+    return (
+      <div className="table-page">
+        <div className="table-topbar">
+          <h2 className="table-topbar-title">
+            <img src="/images/icon.png" alt="" className="topbar-logo" />
+            Partida terminada
+          </h2>
+        </div>
+        <div className="standings-panel">
+          {myStanding && (
+            <div className={`standings-highlight${myStanding.position === 1 ? " standings-highlight--winner" : ""}`}>
+              <div className="pot-label">{myStanding.position === 1 ? "¡Has ganado la partida!" : "Has quedado"}</div>
+              <div className="result-winner">
+                {myStanding.position}
+                {myStanding.position === 1 ? "º puesto" : "º puesto"}
+              </div>
+              <p className={`standings-net ${myStanding.netCents >= 0 ? "standings-net--positive" : "standings-net--negative"}`}>
+                {myStanding.netCents >= 0 ? "+" : ""}
+                {centsToEuros(myStanding.netCents)} €
+              </p>
+            </div>
+          )}
+
+          <table className="standings-table">
+            <thead>
+              <tr>
+                <th>Puesto</th>
+                <th>Jugador</th>
+                <th>Fichas finales</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableState.standings.map((s) => (
+                <tr key={s.userId} className={s.position === 1 ? "standings-row--winner" : ""}>
+                  <td>{s.position}º</td>
+                  <td>{usernameFor(s.userId)}</td>
+                  <td>{centsToEuros(s.finalStackCents)} €</td>
+                  <td className={s.netCents >= 0 ? "standings-net--positive" : "standings-net--negative"}>
+                    {s.netCents >= 0 ? "+" : ""}
+                    {centsToEuros(s.netCents)} €
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <button
+            className="btn-primary"
+            style={{ marginTop: "1.5rem" }}
+            onClick={() => {
+              leaveTable();
+              onExit();
+            }}
+          >
+            Volver al panel
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="table-page">
@@ -270,9 +334,9 @@ export function TablePage({ onExit }: { onExit: () => void }) {
               {usernameFor(playerId)}: {evaluation.handTypeLabel}
             </p>
           ))}
-          <button className="btn-primary" style={{ marginTop: "1rem" }} onClick={startHand}>
-            Jugar otra mano
-          </button>
+          <p className="waiting-note" style={{ marginTop: "1rem" }}>
+            La siguiente mano empezará sola en unos segundos...
+          </p>
         </div>
       )}
 
