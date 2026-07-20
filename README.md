@@ -10,16 +10,24 @@ diseño (colores, tipografía) viven en `src/index.css` como variables CSS.
 ## Paso 7: la mesa de juego
 
 - **`TablePage`** (`src/pages/TablePage.tsx`) — se conecta por Socket.io usando
-  el access token de la sesión, se une a una mesa por nombre (se crea sola si
-  no existe), y renderiza en tiempo real: asientos con nombre de usuario y
-  estado (retirado/conectado), el bote, de quién es el turno, tus propias
-  cartas, los controles de apuesta cuando te toca, el panel de descarte, y el
+  el access token de la sesión. Para jugar, eliges **número de jugadores**
+  (2/3/4) e **importe de la mesa** (1 a 250€, en los tramos fijos que soporta
+  el backend) y pulsas "Buscar mesa": el servidor te sienta en una mesa
+  abierta con esa configuración exacta, o crea una nueva. Todos los
+  jugadores de una misma mesa se sientan con el mismo importe — es lo que
+  hace que la partida sea justa. Renderiza en tiempo real: asientos con
+  nombre de usuario, stack de fichas actual y estado (retirado/conectado),
+  el bote, de quién es el turno, tus propias cartas, los controles de
+  apuesta cuando te toca (incluido un botón de **All-in**), el panel de
+  descarte, un botón de **recompra de fichas** si te quedas a 0, y el
   resultado final de la mano con el desglose de puntuación de cada jugador.
 - **`src/game/types.ts`** — tipos del motor reflejados en el cliente (fases,
-  acciones, evaluación de manos) para tipar los mensajes de socket.
+  acciones, evaluación de manos, tramos de sala) para tipar los mensajes de
+  socket.
 - **`PlayingCard` / `CardBack`** (`src/components/`) — cartas propias (con el
   aviso "comodín" en el Cinco) y el reverso para las cartas de los rivales
-  (nunca se muestran sus valores, tal como ya garantizaba el backend).
+  (nunca se muestran sus valores mientras la mano está en curso; se revelan
+  al terminar por showdown, tal como ya garantizaba el backend).
 
 Los importes de apuesta se introducen en euros (igual que la recarga) y se
 convierten a céntimos antes de enviarlos por el socket — el backend siempre
@@ -72,8 +80,9 @@ cartas de la baraja usan ahora arte real con licencia, sin excepciones.
 4. Abrir `http://localhost:5173` **en dos pestañas o navegadores distintos**
    (o uno normal y otro en incógnito), y registrar dos usuarios distintos.
    Desde el panel de cada uno, usa el formulario "Añadir saldo" para darles
-   saldo antes de sentarlos a la mesa. Ambos deben unirse a la **misma mesa**
-   (mismo nombre) para jugar entre sí.
+   saldo antes de sentarlos a la mesa. Ambos deben elegir el **mismo número
+   de jugadores y el mismo importe** para acabar en la misma mesa (si el
+   importe no coincide, el emparejamiento los sienta en mesas distintas).
 
 ## Siguiente paso
 Posibles mejoras: botón de recarga en el propio frontend, lobby con lista de

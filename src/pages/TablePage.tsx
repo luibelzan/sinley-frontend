@@ -2,7 +2,14 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 import { PlayingCard, CardBack } from "../components/PlayingCard";
-import { HandPublicState, PHASE_LABELS, PlayerAction, TableStateMessage } from "../game/types";
+import {
+  BUY_IN_TIERS_EUROS,
+  HandPublicState,
+  PHASE_LABELS,
+  PlayerAction,
+  ROOM_CAPACITIES,
+  TableStateMessage,
+} from "../game/types";
 
 const SOCKET_URL = import.meta.env["VITE_API_URL"] ?? "http://localhost:4000";
 
@@ -24,8 +31,8 @@ export function TablePage({ onExit }: { onExit: () => void }) {
   const { user, accessToken } = useAuth();
   const socketRef = useRef<Socket | null>(null);
 
-  const [tableIdInput, setTableIdInput] = useState("mesa-1");
-  const [joinedTableId, setJoinedTableId] = useState<string | null>(null);
+  const [selectedCapacity, setSelectedCapacity] = useState<number>(2);
+  const [selectedBuyIn, setSelectedBuyIn] = useState<number>(10);
   const [tableState, setTableState] = useState<TableStateMessage | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [betAmount, setBetAmount] = useState("1.00");
@@ -66,15 +73,16 @@ export function TablePage({ onExit }: { onExit: () => void }) {
 
   function joinTable(e: FormEvent) {
     e.preventDefault();
-    if (!tableIdInput.trim()) return;
-    socketRef.current?.emit("table:join", { tableId: tableIdInput.trim() });
-    setJoinedTableId(tableIdInput.trim());
+    socketRef.current?.emit("table:join", { capacity: selectedCapacity, buyInEuros: selectedBuyIn });
   }
 
   function leaveTable() {
     socketRef.current?.emit("table:leave");
-    setJoinedTableId(null);
     setTableState(null);
+  }
+
+  function rebuy() {
+    socketRef.current?.emit("table:rebuy");
   }
 
   function startHand() {
@@ -96,7 +104,7 @@ export function TablePage({ onExit }: { onExit: () => void }) {
 
   const usernameFor = (id: string) => tableState?.seatUsernames.find((s) => s.id === id)?.username ?? id.slice(0, 8);
 
-  if (!joinedTableId) {
+  if (!tableState) {
     return (
       <div className="table-page">
         <div className="table-topbar">
@@ -109,19 +117,37 @@ export function TablePage({ onExit }: { onExit: () => void }) {
           </button>
         </div>
         <form className="join-form" onSubmit={joinTable}>
-          <p>Elige el nombre de una mesa. Si no existe, se crea al unirte.</p>
+          <p>
+            Elige el tamaño de mesa y el importe de ficha. Todos los jugadores de una misma mesa se sientan con el
+            mismo importe — así la partida es justa para todos.
+          </p>
           {errorMessage && <div className="form-error">{errorMessage}</div>}
           <div className="field">
-            <label htmlFor="tableId">Mesa</label>
-            <input
-              id="tableId"
-              value={tableIdInput}
-              onChange={(e) => setTableIdInput(e.target.value)}
-              placeholder="mesa-1"
-            />
+            <label htmlFor="capacity">Número de jugadores</label>
+            <select
+              id="capacity"
+              value={selectedCapacity}
+              onChange={(e) => setSelectedCapacity(Number(e.target.value))}
+            >
+              {ROOM_CAPACITIES.map((c) => (
+                <option key={c} value={c}>
+                  {c} jugadores
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="buyIn">Importe de la mesa</label>
+            <select id="buyIn" value={selectedBuyIn} onChange={(e) => setSelectedBuyIn(Number(e.target.value))}>
+              {BUY_IN_TIERS_EUROS.map((amount) => (
+                <option key={amount} value={amount}>
+                  {amount} €
+                </option>
+              ))}
+            </select>
           </div>
           <button type="submit" className="btn-primary">
-            Unirse a la mesa
+            Buscar mesa
           </button>
         </form>
       </div>
@@ -138,7 +164,7 @@ export function TablePage({ onExit }: { onExit: () => void }) {
       <div className="table-topbar">
         <h2 className="table-topbar-title">
           <img src="/images/icon.png" alt="" className="topbar-logo" />
-          Mesa: {joinedTableId}
+          Mesa de {tableState.capacity} — ficha {centsToEuros(tableState.buyInCents)} €
         </h2>
         <div className="table-topbar-actions">
           <button className="btn-logout" onClick={leaveTable}>
@@ -167,6 +193,12 @@ export function TablePage({ onExit }: { onExit: () => void }) {
               <div className="seat-username">{usernameFor(seatId)}</div>
               {seatId === tableState.dealerId && <div className="seat-badge">Repartidor</div>}
               {seatHandInfo?.allIn && !seatHandInfo.folded && <div className="seat-badge seat-badge--allin">All-in</div>}
+              <div className="seat-stack">{centsToEuros(tableState.stacks[seatId] ?? 0)} €</div>
+              {seatId === myId && !hand && (tableState.stacks[seatId] ?? 0) <= 0 && (
+                <button className="action-btn-allin" style={{ marginTop: "0.4rem" }} onClick={rebuy}>
+                  Comprar fichas ({centsToEuros(tableState.buyInCents)} €)
+                </button>
+              )}
               {seatHandInfo && (
                 <>
                   <div className="seat-meta">
@@ -207,7 +239,9 @@ export function TablePage({ onExit }: { onExit: () => void }) {
             className="btn-primary"
             style={{ maxWidth: 220 }}
             onClick={startHand}
-            disabled={(tableState?.seatOrder.length ?? 0) < 2}
+            disabled={
+              (tableState?.seatOrder.filter((id) => (tableState.stacks[id] ?? 0) > 0).length ?? 0) < 2
+            }
           >
             Empezar mano
           </button>

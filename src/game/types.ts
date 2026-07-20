@@ -70,12 +70,19 @@ export interface HandPublicState {
 
 export interface TableStateMessage {
   tableId: string;
+  capacity: number;
+  buyInCents: number;
   seatOrder: string[];
   connectedUserIds: string[];
+  stacks: Record<string, number>;
   dealerId: string | null;
   hand: HandPublicState | null;
   seatUsernames: { id: string; username: string }[];
 }
+
+/** Salas disponibles: deben coincidir exactamente con las del backend (tableManager.ts). */
+export const ROOM_CAPACITIES = [2, 3, 4] as const;
+export const BUY_IN_TIERS_EUROS = [1, 2, 4, 5, 8, 10, 20, 25, 50, 100, 250] as const;
 
 export const PHASE_LABELS: Record<GamePhase, string> = {
   waiting: "Esperando",
