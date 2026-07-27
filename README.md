@@ -21,13 +21,19 @@ diseño (colores, tipografía) viven en `src/index.css` como variables CSS.
     directamente en la sala de un amigo con el importe que él haya fijado.
 
   Todos los jugadores de una misma mesa se sientan con el mismo importe —
-  es lo que hace que la partida sea justa. Renderiza en tiempo real: asientos con
-  nombre de usuario, stack de fichas actual y estado (retirado/conectado),
-  el bote, de quién es el turno, tus propias cartas, los controles de
-  apuesta cuando te toca (incluido un botón de **All-in**), el panel de
-  descarte, un botón de **recompra de fichas** si te quedas a 0, y el
-  resultado final de la mano con el desglose de puntuación de cada jugador.
-  Tras cada mano hay una pausa de unos segundos (para ver el resultado y las
+  es lo que hace que la partida sea justa. La mesa se dibuja como un óvalo
+  de tapete verde con reborde de madera (inspirado en las salas de poker
+  online al uso, manteniendo el fondo western del resto de la app), con los
+  asientos repartidos alrededor — tu propio asiento siempre abajo del todo.
+  Renderiza en tiempo real: asientos con nombre de usuario, stack de fichas
+  actual, ficha de repartidor y estado (retirado/conectado), el bote, de
+  quién es el turno, tus propias cartas, los controles de apuesta cuando te
+  toca (incluido un botón de **All-in**), el panel de descarte, un botón de
+  **recompra de fichas** si te quedas a 0, y el resultado final de la mano
+  con el desglose de puntuación de cada jugador. En cuanto hay jugadores
+  suficientes aparece una **cuenta atrás** para el inicio de la partida (ya
+  no hace falta pulsar ningún botón); tras cada mano hay una pausa de unos
+  segundos (para ver el resultado y las
   cartas del rival si hubo showdown) y la siguiente mano arranca sola, sin
   pulsar nada — hasta que ya no quede más de un jugador con fichas, momento
   en el que se muestra una pantalla de resultados finales con la posición y

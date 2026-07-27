@@ -41,6 +41,7 @@ export function TablePage({ onExit }: { onExit: () => void }) {
   const [betAmount, setBetAmount] = useState("1.00");
   const [selectedDiscards, setSelectedDiscards] = useState<number[]>([]);
   const [hasDiscardedThisPhase, setHasDiscardedThisPhase] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
   // Conecta el socket una vez, al montar la página. Se desconecta al salir.
   useEffect(() => {
@@ -74,6 +75,21 @@ export function TablePage({ onExit }: { onExit: () => void }) {
     }
   }, [tableState?.hand?.phase]);
 
+  // Cuenta atrás en vivo: el servidor solo manda EL INSTANTE en el que
+  // arrancará (startsAt), así que aquí se recalculan los segundos restantes
+  // localmente, sin depender de que lleguen más mensajes del servidor.
+  useEffect(() => {
+    const startsAt = tableState?.startsAt ?? null;
+    if (!startsAt) {
+      setCountdownSeconds(null);
+      return;
+    }
+    const update = () => setCountdownSeconds(Math.max(0, Math.ceil((startsAt - Date.now()) / 1000)));
+    update();
+    const interval = setInterval(update, 250);
+    return () => clearInterval(interval);
+  }, [tableState?.startsAt]);
+
   function joinTable(e: FormEvent) {
     e.preventDefault();
     if (roomMode === "public") {
@@ -94,10 +110,6 @@ export function TablePage({ onExit }: { onExit: () => void }) {
 
   function rebuy() {
     socketRef.current?.emit("table:rebuy");
-  }
-
-  function startHand() {
-    socketRef.current?.emit("table:start");
   }
 
   function sendAction(action: PlayerAction) {
@@ -325,74 +337,85 @@ export function TablePage({ onExit }: { onExit: () => void }) {
 
       {errorMessage && <div className="form-error">{errorMessage}</div>}
 
-      <div className="seats-row">
-        {tableState?.seatOrder.map((seatId) => {
-          const seatHandInfo = hand?.players.find((p) => p.id === seatId);
-          const isConnected = tableState.connectedUserIds.includes(seatId);
-          return (
-            <div
-              key={seatId}
-              className={`seat${hand?.actingPlayerId === seatId ? " seat--acting" : ""}${
-                seatHandInfo?.folded ? " seat--folded" : ""
-              }`}
-            >
-              {!isConnected && <span className="seat-disconnected-dot" title="Desconectado" />}
-              <div className="seat-username">{usernameFor(seatId)}</div>
-              {seatId === tableState.dealerId && <div className="seat-badge">Repartidor</div>}
-              {seatHandInfo?.allIn && !seatHandInfo.folded && <div className="seat-badge seat-badge--allin">All-in</div>}
-              <div className="seat-stack">{centsToEuros(tableState.stacks[seatId] ?? 0)} €</div>
-              {seatId === myId && !hand && (tableState.stacks[seatId] ?? 0) <= 0 && (
-                <button className="action-btn-allin" style={{ marginTop: "0.4rem" }} onClick={rebuy}>
-                  Comprar fichas ({centsToEuros(tableState.buyInCents)} €)
-                </button>
-              )}
-              {seatHandInfo && (
-                <>
-                  <div className="seat-meta">
-                    {seatHandInfo.folded ? "Retirado" : `Apostado: ${centsToEuros(seatHandInfo.currentRoundBet)} €`}
-                  </div>
-                  {seatId !== myId && !seatHandInfo.folded && (
-                    <div className="opponent-cards">
-                      {seatHandInfo.hand
-                        ? seatHandInfo.hand.map((card, i) => <PlayingCard key={i} card={card} />)
-                        : Array.from({ length: seatHandInfo.cardCount }).map((_, i) => <CardBack key={i} />)}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <div className="poker-table-oval">
+        {(() => {
+          const seatIds = tableState.seatOrder;
+          const myIndex = myId ? seatIds.indexOf(myId) : -1;
+          // Tu propio asiento siempre se dibuja abajo del todo; el resto se
+          // reparte alrededor del óvalo en el mismo orden de turno.
+          const ordered = myIndex >= 0 ? [...seatIds.slice(myIndex), ...seatIds.slice(0, myIndex)] : seatIds;
+          const n = ordered.length;
 
-      <div className="table-center">
-        {hand ? (
-          <>
-            <div className="phase-label">{PHASE_LABELS[hand.phase]}</div>
-            <div className="pot-label">Bote</div>
-            <div className="pot-display">{centsToEuros(hand.pot)} €</div>
-            {hand.actingPlayerId && hand.phase !== "finished" && (
-              <div className="turn-indicator">
-                {isMyTurn ? "Es tu turno" : `Turno de ${usernameFor(hand.actingPlayerId)}`}
+          return ordered.map((seatId, i) => {
+            const angle = Math.PI / 2 + (i * 2 * Math.PI) / n;
+            const left = 50 + 45 * Math.cos(angle);
+            const top = 50 + 43 * Math.sin(angle);
+            const seatHandInfo = hand?.players.find((p) => p.id === seatId);
+            const isConnected = tableState.connectedUserIds.includes(seatId);
+            return (
+              <div
+                key={seatId}
+                className={`seat${hand?.actingPlayerId === seatId ? " seat--acting" : ""}${
+                  seatHandInfo?.folded ? " seat--folded" : ""
+                }`}
+                style={{ left: `${left}%`, top: `${top}%` }}
+              >
+                {seatId === tableState.dealerId && <div className="dealer-chip">D</div>}
+                {!isConnected && <span className="seat-disconnected-dot" title="Desconectado" />}
+                <div className="seat-username">{usernameFor(seatId)}</div>
+                {seatHandInfo?.allIn && !seatHandInfo.folded && (
+                  <div className="seat-badge seat-badge--allin">All-in</div>
+                )}
+                <div className="seat-stack">{centsToEuros(tableState.stacks[seatId] ?? 0)} €</div>
+                {seatId === myId && !hand && (tableState.stacks[seatId] ?? 0) <= 0 && (
+                  <button className="action-btn-allin" style={{ marginTop: "0.4rem" }} onClick={rebuy}>
+                    Comprar fichas ({centsToEuros(tableState.buyInCents)} €)
+                  </button>
+                )}
+                {seatHandInfo && (
+                  <>
+                    <div className="seat-meta">
+                      {seatHandInfo.folded ? "Retirado" : `Apostado: ${centsToEuros(seatHandInfo.currentRoundBet)} €`}
+                    </div>
+                    {seatId !== myId && !seatHandInfo.folded && (
+                      <div className="opponent-cards">
+                        {seatHandInfo.hand
+                          ? seatHandInfo.hand.map((card, ci) => <PlayingCard key={ci} card={card} />)
+                          : Array.from({ length: seatHandInfo.cardCount }).map((_, ci) => <CardBack key={ci} />)}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            )}
-            {!hand.actingPlayerId &&
-              ["betting_1", "betting_2", "betting_final"].includes(hand.phase) && (
-                <div className="turn-indicator">Sin más apuestas: se completa la mano a cartas vistas</div>
+            );
+          });
+        })()}
+
+        <div className="table-center">
+          {hand ? (
+            <>
+              <div className="phase-label">{PHASE_LABELS[hand.phase]}</div>
+              <div className="pot-label">Bote</div>
+              <div className="pot-display">{centsToEuros(hand.pot)} €</div>
+              {hand.actingPlayerId && hand.phase !== "finished" && (
+                <div className="turn-indicator">
+                  {isMyTurn ? "Es tu turno" : `Turno de ${usernameFor(hand.actingPlayerId)}`}
+                </div>
               )}
-          </>
-        ) : (
-          <button
-            className="btn-primary"
-            style={{ maxWidth: 220 }}
-            onClick={startHand}
-            disabled={
-              (tableState?.seatOrder.filter((id) => (tableState.stacks[id] ?? 0) > 0).length ?? 0) < 2
-            }
-          >
-            Empezar mano
-          </button>
-        )}
+              {!hand.actingPlayerId &&
+                ["betting_1", "betting_2", "betting_final"].includes(hand.phase) && (
+                  <div className="turn-indicator">Sin más apuestas: se completa la mano a cartas vistas</div>
+                )}
+            </>
+          ) : countdownSeconds !== null ? (
+            <div className="countdown-badge">
+              <div className="countdown-number">{countdownSeconds}</div>
+              <div className="pot-label">La partida empieza en...</div>
+            </div>
+          ) : (
+            <p className="waiting-note">Esperando a que se siente al menos otro jugador con fichas...</p>
+          )}
+        </div>
       </div>
 
       {hand?.phase === "finished" && hand.result && (
@@ -418,7 +441,9 @@ export function TablePage({ onExit }: { onExit: () => void }) {
             </p>
           ))}
           <p className="waiting-note" style={{ marginTop: "1rem" }}>
-            La siguiente mano empezará sola en unos segundos...
+            {countdownSeconds !== null
+              ? `La siguiente mano empieza en ${countdownSeconds}s...`
+              : "La siguiente mano empezará sola en unos segundos..."}
           </p>
         </div>
       )}
@@ -453,59 +478,75 @@ export function TablePage({ onExit }: { onExit: () => void }) {
           )}
 
           {isMyTurn && ["betting_1", "betting_2", "betting_final"].includes(hand.phase) && (
-            <div className="action-bar">
-              {hand.currentBetToMatch === 0 ? (
-                <>
-                  <button className="action-btn-secondary" onClick={() => sendAction({ type: "pass" })}>
-                    Pasar
-                  </button>
-                  <input
-                    className="bet-input"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(e.target.value)}
-                    inputMode="decimal"
-                  />
-                  <button
-                    className="action-btn-primary"
-                    onClick={() => sendAction({ type: "bet", amount: eurosToCents(betAmount) })}
-                  >
-                    Apostar
-                  </button>
-                  <button
-                    className="action-btn-allin"
-                    onClick={() => sendAction({ type: "bet", amount: ALL_IN_SENTINEL_AMOUNT })}
-                  >
-                    All-in
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button className="action-btn-secondary" onClick={() => sendAction({ type: "fold" })}>
-                    Retirarse
-                  </button>
-                  <button className="action-btn-primary" onClick={() => sendAction({ type: "call" })}>
-                    Igualar ({centsToEuros(hand.currentBetToMatch - (myPlayer.currentRoundBet ?? 0))} €)
-                  </button>
-                  <input
-                    className="bet-input"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(e.target.value)}
-                    inputMode="decimal"
-                  />
-                  <button
-                    className="action-btn-secondary"
-                    onClick={() => sendAction({ type: "raise", amount: eurosToCents(betAmount) })}
-                  >
-                    Subir a
-                  </button>
-                  <button
-                    className="action-btn-allin"
-                    onClick={() => sendAction({ type: "raise", amount: ALL_IN_SENTINEL_AMOUNT })}
-                  >
-                    All-in
-                  </button>
-                </>
+            <div className="action-bar-wrap">
+              {hand.pot > 0 && (
+                <div className="pot-preset-row">
+                  {[0.5, 1, 2].map((mult) => (
+                    <button
+                      key={mult}
+                      type="button"
+                      className="pot-preset-btn"
+                      onClick={() => setBetAmount(centsToEuros(Math.round(hand.pot * mult)))}
+                    >
+                      {mult === 0.5 ? "½ bote" : mult === 1 ? "Bote" : "2x bote"}
+                    </button>
+                  ))}
+                </div>
               )}
+              <div className="action-bar">
+                {hand.currentBetToMatch === 0 ? (
+                  <>
+                    <button className="action-btn-secondary" onClick={() => sendAction({ type: "pass" })}>
+                      Pasar
+                    </button>
+                    <input
+                      className="bet-input"
+                      value={betAmount}
+                      onChange={(e) => setBetAmount(e.target.value)}
+                      inputMode="decimal"
+                    />
+                    <button
+                      className="action-btn-primary"
+                      onClick={() => sendAction({ type: "bet", amount: eurosToCents(betAmount) })}
+                    >
+                      Apostar
+                    </button>
+                    <button
+                      className="action-btn-allin"
+                      onClick={() => sendAction({ type: "bet", amount: ALL_IN_SENTINEL_AMOUNT })}
+                    >
+                      All-in
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button className="action-btn-fold" onClick={() => sendAction({ type: "fold" })}>
+                      Retirarse
+                    </button>
+                    <button className="action-btn-primary" onClick={() => sendAction({ type: "call" })}>
+                      Igualar ({centsToEuros(hand.currentBetToMatch - (myPlayer.currentRoundBet ?? 0))} €)
+                    </button>
+                    <input
+                      className="bet-input"
+                      value={betAmount}
+                      onChange={(e) => setBetAmount(e.target.value)}
+                      inputMode="decimal"
+                    />
+                    <button
+                      className="action-btn-secondary"
+                      onClick={() => sendAction({ type: "raise", amount: eurosToCents(betAmount) })}
+                    >
+                      Subir a
+                    </button>
+                    <button
+                      className="action-btn-allin"
+                      onClick={() => sendAction({ type: "raise", amount: ALL_IN_SENTINEL_AMOUNT })}
+                    >
+                      All-in
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
 

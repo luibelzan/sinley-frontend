@@ -90,6 +90,8 @@ export interface TableStateMessage {
   seatUsernames: { id: string; username: string }[];
   gameOver: boolean;
   standings: StandingEntry[] | null;
+  /** Instante (epoch ms) en el que arrancará la próxima mano en curso, o null si no hay ninguna cuenta atrás programada. */
+  startsAt: number | null;
 }
 
 /** Salas disponibles: deben coincidir exactamente con las del backend (tableManager.ts). */
