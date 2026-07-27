@@ -70,6 +70,7 @@ export interface HandPublicState {
 
 export interface StandingEntry {
   userId: string;
+  username?: string;
   finalStackCents: number;
   totalBuyInCents: number;
   netCents: number;

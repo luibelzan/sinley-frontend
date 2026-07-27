@@ -282,7 +282,7 @@ export function TablePage({ onExit }: { onExit: () => void }) {
               {tableState.standings.map((s) => (
                 <tr key={s.userId} className={s.position === 1 ? "standings-row--winner" : ""}>
                   <td>{s.position}º</td>
-                  <td>{usernameFor(s.userId)}</td>
+                  <td>{s.username ?? usernameFor(s.userId)}</td>
                   <td>{centsToEuros(s.finalStackCents)} €</td>
                   <td className={s.netCents >= 0 ? "standings-net--positive" : "standings-net--negative"}>
                     {s.netCents >= 0 ? "+" : ""}
